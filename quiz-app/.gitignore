@@ -1,0 +1,5 @@
+.env
+.venv
+__pycache__
+test2.py
+quiz_auth.json
