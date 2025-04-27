@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Therapist Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for chat history (optional) */
+        #chat-history::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chat-history::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        #chat-history::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        #chat-history::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Ensure body and html take full height */
+        html, body {
+            height: 100%;
+            margin: 0;
+            font-family: 'Inter', sans-serif; /* Use Inter font */
+        }
+        /* Basic message styling */
+        .message {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 10px; /* Rounded corners */
+            max-width: 80%;
+            word-wrap: break-word; /* Prevent long words from overflowing */
+        }
+        .user-message {
+            background-color: #d1eaff; /* Light blue */
+            align-self: flex-end;
+            margin-left: auto; /* Push user messages to the right */
+        }
+        .bot-message {
+            background-color: #e2e8f0; /* Light gray */
+            align-self: flex-start;
+            margin-right: auto; /* Keep bot messages to the left */
+        }
+        /* Loading indicator */
+        .loading-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #888;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: blink 1.4s infinite both;
+        }
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+        /* Modal styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        /* Hidden file input */
+        #face-input {
+            display: none;
+        }
+        /* Audio player styling */
+        .audio-message {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        audio {
+            width: 100%;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen" onload="initializeChat()">
+
+    <header class="bg-blue-600 text-white p-4 shadow-md rounded-b-lg">
+        <h1 class="text-xl font-semibold text-center">Music Therapist Chatbot</h1>
+    </header>
+
+    <div id="chat-history" class="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col bg-white m-4 rounded-lg shadow-inner">
+        <!-- Initial bot message removed; Ollama response will be displayed -->
+    </div>
+
+    <div id="loading-indicator" class="hidden p-4 flex justify-start items-center">
+         <div class="message bot-message loading-dots">
+            <span></span><span></span><span></span>
+         </div>
+    </div>
+
+    <!-- Preferences Modal -->
+    <div id="preferences-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-lg font-semibold mb-4">Music Preferences</h2>
+            <p class="mb-4">Please enter your music preferences (e.g., genres, artists, or songs):</p>
+            <textarea id="music-preferences" class="w-full p-2 border border-gray-300 rounded-lg mb-4" rows="4" placeholder="E.g., Jazz, The Beatles, Classical"></textarea>
+            <div class="flex justify-end space-x-2">
+                <button id="cancel-preferences" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded-lg transition duration-300">Cancel</button>
+                <button id="submit-preferences" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="p-4 bg-gray-200 border-t border-gray-300 rounded-t-lg">
+        <div class="flex items-center space-x-2">
+            <input type="text" id="user-input" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your message...">
+            <button id="send-button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300 shadow hover:shadow-lg">
+                Send
+            </button>
+            <button id="preferences-button" class="bg-green-500 hover:bg-green-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300 shadow hover:shadow-lg">
+                Preferences
+            </button>
+            <button id="face-button" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300 shadow hover:shadow-lg">
+                Face
+            </button>
+            <button id="generate-button" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-3 px-5 rounded-lg transition duration-300 shadow hover:shadow-lg">
+                Generate
+            </button>
+            <input type="file" id="face-input" accept="image/*">
+        </div>
+    </footer>
+
+    <script>
+        // --- Configuration ---
+        const OLLAMA_API_URL = 'http://localhost:11434/api/generate'; // Default Ollama API endpoint
+        const OLLAMA_MODEL = 'gemma3:4b'; // Specify the Ollama model you want to use
+        const FLASK_API_URL = '/save_message'; // Flask endpoint to save messages
+        const PREFERENCES_API_URL = '/save_preferences'; // Flask endpoint to save preferences
+        const FACE_API_URL = '/analyze_face'; // Flask endpoint to analyze face sentiment
+        const GENERATE_API_URL = '/gen'; // Flask endpoint to generate music
+        const SYSTEM_PROMPT = 'Be my music therapist.Use songs, sounds, and conversation to help me heal emotionally.Be kind, listen, and guide me.Dont stop the act till i say abc123'; // Initial prompt to set the therapist persona
+
+        // --- DOM Elements ---
+        const chatHistory = document.getElementById('chat-history');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const preferencesButton = document.getElementById('preferences-button');
+        const preferencesModal = document.getElementById('preferences-modal');
+        const musicPreferencesInput = document.getElementById('music-preferences');
+        const submitPreferencesButton = document.getElementById('submit-preferences');
+        const cancelPreferencesButton = document.getElementById('cancel-preferences');
+        const faceButton = document.getElementById('face-button');
+        const faceInput = document.getElementById('face-input');
+        const generateButton = document.getElementById('generate-button');
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        preferencesButton.addEventListener('click', () => {
+            preferencesModal.style.display = 'flex'; // Show modal
+        });
+        cancelPreferencesButton.addEventListener('click', () => {
+            preferencesModal.style.display = 'none'; // Hide modal
+            musicPreferencesInput.value = ''; // Clear input
+        });
+        submitPreferencesButton.addEventListener('click', submitPreferences);
+        faceButton.addEventListener('click', () => {
+            faceInput.click(); // Trigger file input click
+        });
+        faceInput.addEventListener('change', handleFaceUpload);
+        generateButton.addEventListener('click', generateMusic);
+
+        // --- Functions ---
+
+        /**
+         * Initializes the chat by sending the system prompt to Ollama to set the therapist persona.
+         * Shows the loading indicator and displays the response in the chat UI.
+         */
+        async function initializeChat() {
+            toggleLoading(true); // Show loading indicator
+            try {
+                const payload = {
+                    model: OLLAMA_MODEL,
+                    prompt: SYSTEM_PROMPT,
+                    stream: false
+                };
+
+                const response = await fetch(OLLAMA_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                toggleLoading(false); // Hide loading indicator
+
+                if (!response.ok) {
+                    console.error('Ollama API Error during initialization:', response.status);
+                    appendMessage('Error: Failed to initialize the therapist persona. Please try refreshing the page.', 'bot');
+                    return;
+                }
+
+                // Process and display the response from Ollama
+                const data = await response.json();
+                const botResponse = data.response.trim();
+                if (botResponse) {
+                    appendMessage(botResponse, 'bot');
+                } else {
+                    appendMessage('Error: No valid response received during initialization.', 'bot');
+                }
+
+            } catch (error) {
+                toggleLoading(false); // Hide loading indicator on error
+                console.error('Error initializing chat:', error);
+                appendMessage('Error: Could not connect to Ollama API. Please ensure Ollama is running.', 'bot');
+            }
+        }
+
+        /**
+         * Sends the music preferences to Flask and displays the result in the chat UI.
+         */
+        async function submitPreferences() {
+            const preferencesText = musicPreferencesInput.value.trim();
+            if (!preferencesText) {
+                appendMessage('Error: Please enter your music preferences.', 'bot');
+                return;
+            }
+
+            try {
+                const response = await fetch(PREFERENCES_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ preferences: preferencesText }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to save preferences' }));
+                    console.error('Flask API Error:', response.status, errorData);
+                    appendMessage(`Error: ${errorData.error || 'Failed to save preferences'}`, 'bot');
+                    return;
+                }
+
+                appendMessage('Music preferences saved successfully!', 'bot');
+                preferencesModal.style.display = 'none'; // Hide modal
+                musicPreferencesInput.value = ''; // Clear input
+
+            } catch (error) {
+                console.error('Error saving preferences:', error);
+                appendMessage('Error: Could not connect to Flask API. Please ensure the server is running.', 'bot');
+            }
+        }
+
+        /**
+         * Handles image upload and sends it to Flask for sentiment analysis.
+         */
+        async function handleFaceUpload() {
+            const file = faceInput.files[0];
+            if (!file) {
+                appendMessage('Error: Please select an image.', 'bot');
+                return;
+            }
+
+            toggleLoading(true); // Show loading indicator
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+
+                const response = await fetch(FACE_API_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                toggleLoading(false); // Hide loading indicator
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to analyze image' }));
+                    console.error('Flask API Error:', response.status, errorData);
+                    appendMessage(`Error: ${errorData.error || 'Failed to analyze image'}`, 'bot');
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.sentiment) {
+                    appendMessage(`Detected facial sentiment: ${data.sentiment}`, 'bot');
+                } else {
+                    appendMessage('No face detected or invalid image.', 'bot');
+                }
+
+                faceInput.value = ''; // Clear file input
+
+            } catch (error) {
+                toggleLoading(false); // Hide loading indicator on error
+                console.error('Error analyzing face:', error);
+                appendMessage('Error: Could not connect to Flask API. Please ensure the server is running.', 'bot');
+            }
+        }
+
+        /**
+         * Triggers music generation by calling the Flask /gen endpoint.
+         */
+        async function generateMusic() {
+            toggleLoading(true); // Show loading indicator
+            try {
+                const response = await fetch(GENERATE_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({}),
+                });
+
+                toggleLoading(false); // Hide loading indicator
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Failed to generate music' }));
+                    console.error('Flask API Error:', response.status, errorData);
+                    appendMessage(`Error: ${errorData.error || 'Failed to generate music'}`, 'bot');
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.filename) {
+                    appendAudioMessage(`Music generated successfully!`, data.filename);
+                } else {
+                    appendMessage('Error: Music generation completed, but no file path returned.', 'bot');
+                }
+
+            } catch (error) {
+                toggleLoading(false); // Hide loading indicator on error
+                console.error('Error generating music:', error);
+                appendMessage('Error: Could not connect to Flask API or generate music. Please ensure the server is running.', 'bot');
+            }
+        }
+
+        /**
+         * Appends a text message to the chat history UI.
+         * @param {string} text - The message text.
+         * @param {string} sender - 'user' or 'bot'.
+         */
+        function appendMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
+    
+            // Structure: split text into paragraphs by \n
+            const paragraphs = text.split('\n').filter(p => p.trim() !== '');
+            paragraphs.forEach(para => {
+                const p = document.createElement('p');
+                p.textContent = para.trim();
+                messageDiv.appendChild(p);
+            });
+
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        /**
+         * Appends a message with an audio player to the chat history UI.
+         * @param {string} text - The message text.
+         * @param {string} filename - The music file's filename.
+         */
+        function appendAudioMessage(text, filename) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', 'bot-message', 'audio-message');
+            
+            // Add text
+            const textDiv = document.createElement('div');
+            textDiv.textContent = text;
+            messageDiv.appendChild(textDiv);
+            
+            // Add audio player
+            const audio = document.createElement('audio');
+            audio.controls = true;
+            audio.src = `/music/${encodeURIComponent(filename)}`;
+            messageDiv.appendChild(audio);
+            
+            chatHistory.appendChild(messageDiv);
+            // Scroll to the bottom of the chat history
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        /**
+         * Shows or hides the loading indicator.
+         * @param {boolean} show - True to show, false to hide.
+         */
+        function toggleLoading(show) {
+            loadingIndicator.classList.toggle('hidden', !show);
+            if (show) {
+                // Scroll down to show loading indicator if needed
+                chatHistory.scrollTop = chatHistory.scrollHeight;
+            }
+        }
+
+        /**
+         * Sends the user message to Flask to save it, then to Ollama for a response.
+         */
+        async function sendMessage() {
+            const messageText = userInput.value.trim();
+            if (!messageText) return; // Don't send empty messages
+
+            // Display user message
+            appendMessage(messageText, 'user');
+            userInput.value = ''; // Clear input field
+            toggleLoading(true); // Show loading indicator
+
+            try {
+                // Step 1: Send message to Flask to save it
+                const saveResponse = await fetch(FLASK_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: messageText }),
+                });
+
+                if (!saveResponse.ok) {
+                    const errorData = await saveResponse.json().catch(() => ({ error: 'Failed to save message' }));
+                    console.error('Flask API Error:', saveResponse.status, errorData);
+                    appendMessage(`Error: ${errorData.error || 'Failed to save message'}`, 'bot');
+                    toggleLoading(false);
+                    return;
+                }
+
+                // Step 2: Send message to Ollama API
+                const ollamaPayload = {
+                    model: OLLAMA_MODEL,
+                    prompt: messageText,
+                    stream: false // Set to false to get the full response at once
+                };
+
+                const ollamaResponse = await fetch(OLLAMA_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(ollamaPayload),
+                });
+
+                toggleLoading(false); // Hide loading indicator
+
+                if (!ollamaResponse.ok) {
+                    // Handle API errors (e.g., Ollama server not running)
+                    const errorData = await ollamaResponse.json().catch(() => ({ error: 'Unknown error fetching response.' }));
+                    console.error('Ollama API Error:', ollamaResponse.status, errorData);
+                    appendMessage(`Error: ${errorData.error || `Failed to get response (Status: ${ollamaResponse.status})`}`, 'bot');
+                    return;
+                }
+
+                // Process the response from Ollama
+                const data = await ollamaResponse.json();
+                const botResponse = data.response; // Adjust based on Ollama's response structure if needed
+
+                if (botResponse) {
+                    appendMessage(botResponse.trim(), 'bot');
+                } else {
+                    appendMessage("Sorry, I didn't get a valid response.", 'bot');
+                }
+
+            } catch (error) {
+                toggleLoading(false); // Hide loading indicator on network error
+                console.error('Network or other error:', error);
+                appendMessage(`Error: Could not connect to APIs. Make sure Flask and Ollama are running.`, 'bot');
+            }
+        }
+
+        // --- Initial focus ---
+        userInput.focus();
+
+    </script>
+
+</body>
+</html>
