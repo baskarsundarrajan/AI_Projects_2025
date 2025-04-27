@@ -108,7 +108,7 @@ async def home():
     </head>
     <body>
         <div class="container">
-            <h1>🌾  Grow To Glow 🌴</h1>
+            <h1>🌾  Grow With Glow 🌴</h1>
             <textarea id="query" rows="5" placeholder="Ask your question here..."></textarea>
             <button id="ask-button">Ask the Expert</button>
             <div class="response-box" id="response">Your answer will appear here!</div>
