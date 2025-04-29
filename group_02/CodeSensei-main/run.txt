@@ -1,0 +1,8 @@
+#run server
+    - cd server
+    - .\venv\Scripts\activate
+    - uvicorn app:app --reload
+
+#run frontend
+    - cd frontend
+    - npm run dev
