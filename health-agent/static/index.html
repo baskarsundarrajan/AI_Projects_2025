@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sehat — Personal Health Agent</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>Sehat</h1>
+      <span class="tagline">your personal health companion</span>
+    </div>
+    <div class="streak-chip" id="streak-chip" title="Consecutive days with at least one log">
+      <span id="streak-days">0</span>-day streak
+    </div>
+  </header>
+
+  <main>
+    <section class="dashboard">
+      <div class="tiles">
+        <div class="tile">
+          <div class="tile-label">Water today</div>
+          <div class="tile-value"><span id="t-water">0</span><span class="tile-unit">/ 8 glasses</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Movement</div>
+          <div class="tile-value"><span id="t-move">0</span><span class="tile-unit">min</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Calories</div>
+          <div class="tile-value"><span id="t-cal">0</span><span class="tile-unit">kcal logged</span></div>
+        </div>
+        <div class="tile">
+          <div class="tile-label">Sleep</div>
+          <div class="tile-value"><span id="t-sleep">—</span><span class="tile-unit">hrs last night</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Today's checklist</h2>
+        <ul class="checklist" id="checklist"></ul>
+      </div>
+
+      <div class="charts">
+        <div class="card chart-card">
+          <h2>Water · last 7 days</h2>
+          <div class="barchart" id="chart-water" data-series="water"></div>
+        </div>
+        <div class="card chart-card">
+          <h2>Sleep · last 7 days</h2>
+          <div class="barchart" id="chart-sleep" data-series="sleep"></div>
+        </div>
+        <div class="card chart-card">
+          <h2>Mood · last 7 days</h2>
+          <div class="barchart" id="chart-mood" data-series="mood"></div>
+        </div>
+        <div class="card chart-card">
+          <h2>Weight · last 30 days</h2>
+          <div class="linechart" id="chart-weight"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="chat card">
+      <h2>Talk to Sehat</h2>
+      <div class="messages" id="messages">
+        <div class="msg agent">Hi! I'm Sehat. Tell me what you ate, how you slept, how you're feeling, or ask how you're doing — I'll keep track. <span class="disclaimer">I'm not a doctor; for medical concerns please see a professional.</span></div>
+      </div>
+      <form id="chat-form" autocomplete="off">
+        <input type="text" id="chat-input" placeholder="e.g. had poha for breakfast, walked 30 min…" maxlength="2000">
+        <button type="submit" id="chat-send">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <div class="tooltip" id="tooltip" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

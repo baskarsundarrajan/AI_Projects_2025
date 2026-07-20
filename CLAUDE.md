@@ -22,6 +22,7 @@ Key implications:
 | `Group5_AI-Powered-Music-Therapist/` | Therapist chatbot + music generation | Flask, Ollama (`gemma3:4b`, `gemma2:2b`), FER facial sentiment, Beatoven API | `src/app.py` |
 | `AI_BOT_Group7/` | "Pandora" AI counselor bot | FAISS + SentenceTransformers RAG, fine-tuned Flan-T5 | `counselor_demo_app.py` |
 | `KONKANI POEM NEXT WORD PREDICTION/` | GPT-2 fine-tuning for Konkani poetry (developed on Colab) | transformers, torch, datasets | `Trial_1.ipynb` / `trial_1.py` |
+| `health-agent/` | "Sehat" — personal health agent (diet, fitness, mood, habits) with tool-calling and SQLite memory | FastAPI + Ollama (`llama3.2`) backend; vanilla HTML/JS dashboard + chat | `app.py` |
 | `images/`, `*.pdf`, `*.pptx` | Reports, slides, screenshots — deliverables, not source | — | — |
 
 Note the directory name `KONKANI POEM NEXT WORD PREDICTION` contains **spaces** — always quote the path in shell commands.
@@ -64,6 +65,10 @@ From `src/`: `python app.py` (Flask, port 5000). Requires `ollama serve` with `g
 ### Legal RAG (root) and Konkani prediction
 
 Notebook-driven — open in Jupyter and run cells. Legal RAG requires a local Ollama instance and installs deps from the root `requirements.txt`. The Konkani project was developed on Google Colab; `trial_1.py` is the exported script form of the notebook.
+
+### Sehat health agent (`health-agent/`)
+
+From `health-agent/`: `pip install -r requirements.txt`, then `uvicorn app:app --reload` and open http://localhost:8000. Requires local Ollama with `llama3.2` pulled (model/URL/DB path configurable via `HEALTH_AGENT_MODEL`, `OLLAMA_URL`, `HEALTH_AGENT_DB`). State lives in a gitignored `health_agent.db` SQLite file. The LLM logs data via Ollama tool calls defined in `health_tools.py`; the agent loop is in `agent.py`.
 
 ### Pandora bot (`AI_BOT_Group7/`)
 
